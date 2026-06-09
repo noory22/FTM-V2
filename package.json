@@ -1,7 +1,7 @@
 {
-  "name": "cttm",
+  "name": "ftm",
   "version": "1.0.0",
-  "description": "Catheter Trackability Testing Machine",
+  "description": "Flexural Testing Machine",
   "main": "main.js",
   "author": {
     "name": "noory22",
@@ -53,8 +53,8 @@
     "tailwindcss": "^4.1.12"
   },
   "build": {
-    "appId": "com.revivemedical.cttm",
-    "productName": "CTTM",
+    "appId": "com.revivemedical.ftm",
+    "productName": "FTM",
     "copyright": "Copyright © 2024 Revive Medical Technologies",
     "directories": {
       "output": "dist"
@@ -112,13 +112,13 @@
       "artifactName": "${productName}-Setup-${version}.${ext}",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "CTTM",
+      "shortcutName": "FTM",
       "installerIcon": "src/assets/icon.ico",
       "uninstallerIcon": "src/assets/icon.ico",
       "installerHeaderIcon": "src/assets/icon.ico",
       "deleteAppDataOnUninstall": false,
       "perMachine": true,
-      "guid": "com.revivemedical.cttm"
+      "guid": "com.revivemedical.ftm"
     },
     "mac": {
       "target": [
@@ -139,7 +139,7 @@
     "publish": {
       "provider": "github",
       "owner": "noory22",
-      "repo": "CTTM-VD",
+      "repo": "FTM-V2",
       "private": false,
       "releaseType": "release"
     }

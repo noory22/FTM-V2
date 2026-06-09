@@ -23,9 +23,9 @@ module.exports = {
     win32metadata: {
       CompanyName: 'Revive Medical Technologies',
       FileDescription: 'Desktop App',
-      OriginalFileName: 'Catheter Trackability Testing Machine',
-      ProductName: 'CTTM',
-      InternalName: 'Catheter Trackability Testing Machine',
+      OriginalFileName: 'Flexural Testing Machine',
+      ProductName: 'FTM',
+      InternalName: 'Flexural Testing Machine',
     },
   },ignore: [
     /^\/\.git/,
@@ -35,9 +35,9 @@ module.exports = {
   win32metadata: {
     CompanyName: 'Revive Medical Technologies',
     FileDescription: 'Desktop App',
-    OriginalFileName: 'Catheter Trackability Testing Machine',
-    ProductName: 'CTTM',
-    InternalName: 'Catheter Trackability Testing Machine',
+    OriginalFileName: 'Flexural Testing Machine',
+    ProductName: 'FTM',
+    InternalName: 'Flexural Testing Machine',
   },
 
   rebuildConfig: {},

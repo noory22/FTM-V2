@@ -182,7 +182,7 @@ const UpdateChecker = () => {
             <div className="flex justify-between items-center">
                <div className="flex items-center gap-3">
                  <Loader2 size={18} className="animate-spin text-blue-600" />
-                 <span className="text-xs font-bold text-slate-700">Updating CTTM...</span>
+                 <span className="text-xs font-bold text-slate-700">Updating FTM...</span>
                </div>
                <span className="text-sm font-black text-blue-600">{Math.round(progress.percent)}%</span>
             </div>
