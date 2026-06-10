@@ -141,7 +141,7 @@ const REG_MANUAL_DISTANCE = 71;   // 1 register (16-bit integer) — Catheter Di
 function registersToFloat32LE(lowWord, highWord) {
   const buf = new ArrayBuffer(4);
   const view = new DataView(buf);
-  view.setUint16(0, lowWord,  true); // low word at byte 0
+  view.setUint16(0, lowWord, true); // low word at byte 0
   view.setUint16(2, highWord, true); // high word at byte 2
   return view.getFloat32(0, true);   // read as little-endian float
 }
@@ -151,7 +151,7 @@ function registersToFloat32BE(highWord, lowWord) {
   const buf = new ArrayBuffer(4);
   const view = new DataView(buf);
   view.setUint16(0, highWord, false);
-  view.setUint16(2, lowWord,  false);
+  view.setUint16(2, lowWord, false);
   return view.getFloat32(0, false);
 }
 
@@ -820,13 +820,13 @@ async function processModbusLoop() {
 
       try {
         const fRes = await client.readHoldingRegisters(REG_FORCE, 2);
-        const rawLow  = fRes.data[0];
+        const rawLow = fRes.data[0];
         const rawHigh = fRes.data[1];
         // Try both: plain 16-bit int (rawLow) and 32-bit float interpretations
-        const asInt16  = rawLow;                              // raw as plain integer
+        const asInt16 = rawLow;                              // raw as plain integer
         const asScaled = rawLow / 10.0;                      // common: value * 0.1
-        const floatLE  = registersToFloat32LE(rawLow, rawHigh);
-        const floatBE  = registersToFloat32BE(rawLow, rawHigh);
+        const floatLE = registersToFloat32LE(rawLow, rawHigh);
+        const floatBE = registersToFloat32BE(rawLow, rawHigh);
         // Log every 5s
         if (Date.now() - (plcState._forceLogTime || 0) > 5000) {
           console.log(`📊 REG_FORCE(R54) raw words: [${rawLow}, ${rawHigh}]`);
@@ -1004,6 +1004,118 @@ async function writeConfigurations(configs) {
     return false;
   }
 }
+
+// ============================
+// 2-POINT & 3-POINT CSV CONFIGURATIONS
+// ============================
+
+// Helper to convert array of objects to CSV string
+function convertToCSV(arr, headers) {
+  if (!arr || !arr.length) return headers.join(',') + '\n';
+  const csvRows = [];
+  csvRows.push(headers.join(','));
+  for (const row of arr) {
+    const values = headers.map(header => {
+      const val = row[header];
+      const escaped = ('' + val).replace(/"/g, '""');
+      return `"${escaped}"`;
+    });
+    csvRows.push(values.join(','));
+  }
+  return csvRows.join('\n');
+}
+
+// Helper to convert CSV string to array of objects
+function convertFromCSV(csvStr, headers) {
+  if (!csvStr) return [];
+  const lines = csvStr.trim().split('\n');
+  if (lines.length <= 1) return [];
+
+  const result = [];
+  for (let i = 1; i < lines.length; i++) {
+    // Simple split for CSV parsing (assumes no commas in values since we validate inputs)
+    const line = lines[i].replace(/"/g, '');
+    const values = line.split(',');
+    const obj = {};
+    headers.forEach((header, index) => {
+      obj[header] = values[index] !== undefined ? values[index] : '';
+    });
+    result.push(obj);
+  }
+  return result;
+}
+
+const TWO_POINT_DIR = path.join(app.getPath('documents'), 'FTM-2-point Test');
+const TWO_POINT_FILE = path.join(TWO_POINT_DIR, 'configs.csv');
+const TWO_POINT_HEADERS = ['configName', 'probeTravelLimit', 'forceLimit', 'testSpeed'];
+
+async function ensure2PointConfig() {
+  if (!fs.existsSync(TWO_POINT_DIR)) {
+    fs.mkdirSync(TWO_POINT_DIR, { recursive: true });
+  }
+  if (!fs.existsSync(TWO_POINT_FILE)) {
+    await fsPromises.writeFile(TWO_POINT_FILE, TWO_POINT_HEADERS.join(',') + '\n', 'utf8');
+  }
+}
+
+const THREE_POINT_DIR = path.join(app.getPath('documents'), 'FTM-3-point Test');
+const THREE_POINT_FILE = path.join(THREE_POINT_DIR, 'configs.csv');
+const THREE_POINT_HEADERS = ['configName', 'testLength', 'measurementInterval', 'probeTravelLimit', 'forceLimit', 'testSpeed', 'supportSpan', 'horizontalSpeed'];
+
+async function ensure3PointConfig() {
+  if (!fs.existsSync(THREE_POINT_DIR)) {
+    fs.mkdirSync(THREE_POINT_DIR, { recursive: true });
+  }
+  if (!fs.existsSync(THREE_POINT_FILE)) {
+    await fsPromises.writeFile(THREE_POINT_FILE, THREE_POINT_HEADERS.join(',') + '\n', 'utf8');
+  }
+}
+
+ipcMain.handle('read-2point-configs', async () => {
+  try {
+    await ensure2PointConfig();
+    const data = await fsPromises.readFile(TWO_POINT_FILE, 'utf8');
+    return convertFromCSV(data, TWO_POINT_HEADERS);
+  } catch (error) {
+    console.error('Error reading 2-point configs:', error);
+    return [];
+  }
+});
+
+ipcMain.handle('write-2point-configs', async (event, configs) => {
+  try {
+    await ensure2PointConfig();
+    const csvData = convertToCSV(configs, TWO_POINT_HEADERS);
+    await fsPromises.writeFile(TWO_POINT_FILE, csvData, 'utf8');
+    return true;
+  } catch (error) {
+    console.error('Error writing 2-point configs:', error);
+    return false;
+  }
+});
+
+ipcMain.handle('read-3point-configs', async () => {
+  try {
+    await ensure3PointConfig();
+    const data = await fsPromises.readFile(THREE_POINT_FILE, 'utf8');
+    return convertFromCSV(data, THREE_POINT_HEADERS);
+  } catch (error) {
+    console.error('Error reading 3-point configs:', error);
+    return [];
+  }
+});
+
+ipcMain.handle('write-3point-configs', async (event, configs) => {
+  try {
+    await ensure3PointConfig();
+    const csvData = convertToCSV(configs, THREE_POINT_HEADERS);
+    await fsPromises.writeFile(THREE_POINT_FILE, csvData, 'utf8');
+    return true;
+  } catch (error) {
+    console.error('Error writing 3-point configs:', error);
+    return false;
+  }
+});
 
 // -------------------------
 // Pulse coil helper
