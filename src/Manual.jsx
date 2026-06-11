@@ -37,6 +37,12 @@ const Manual = () => {
   const [probeDistance, setProbeDistance] = useState('--');
   const [catheterDistance, setCatheterDistance] = useState('--');
 
+  // Status bar states
+  const [machineStatus, setMachineStatus] = useState(1); // 1=IDLE, 2=HOMING, 3=READY
+  const [horizontalDistance, setHorizontalDistance] = useState(0);
+  const [verticalDistance, setVerticalDistance] = useState(0);
+  const [statusForce, setStatusForce] = useState(0);
+
   const [graphData, setGraphData] = useState([]);
   const forwardData = graphData.filter(p => p.direction === 'forward');
   const backwardData = graphData.filter(p => p.direction === 'backward');
@@ -137,6 +143,47 @@ const Manual = () => {
     ],
   };
 
+  // Function to get status text and color based on R11 value
+  const getStatusDisplay = (statusValue) => {
+    switch(statusValue) {
+      case 1:
+        return { text: 'IDLE', color: 'text-yellow-600', bg: 'bg-yellow-100' };
+      case 2:
+        return { text: 'HOMING', color: 'text-blue-600', bg: 'bg-blue-100' };
+      case 3:
+        return { text: 'READY', color: 'text-green-600', bg: 'bg-green-100' };
+      default:
+        return { text: 'UNKNOWN', color: 'text-gray-600', bg: 'bg-gray-100' };
+    }
+  };
+
+  // Function to fetch real-time data for status bar
+  const fetchRealTimeData = async () => {
+    try {
+      const data = await window.api.readData();
+      if (data && data.success) {
+        // Update machine status from R11
+        if (data.machineStatus !== undefined) {
+          setMachineStatus(data.machineStatus);
+        }
+        // Update horizontal distance from R71
+        if (data.catheterDistance !== undefined) {
+          setHorizontalDistance(data.catheterDistance);
+        }
+        // Update vertical distance from R70
+        if (data.distance !== undefined) {
+          setVerticalDistance(data.distance);
+        }
+        // Update force from R54
+        if (data.force_mN !== undefined) {
+          setStatusForce(data.force_mN);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching real-time data:', error);
+    }
+  };
+
   // Activate Manual Mode on component mount
   useEffect(() => {
     const activateManualMode = async () => {
@@ -154,6 +201,10 @@ const Manual = () => {
     };
 
     activateManualMode();
+
+    // Start real-time data fetching for status bar
+    fetchRealTimeData();
+    const statusIntervalId = setInterval(fetchRealTimeData, 500);
 
     // Deactivate manual mode on component unmount
     return () => {
@@ -173,6 +224,7 @@ const Manual = () => {
         }
       };
       deactivateManualMode();
+      clearInterval(statusIntervalId);
     };
   }, [connectionStatus.connected, emergencyActive]);
 
@@ -464,8 +516,6 @@ const Manual = () => {
   // Check if controls should be enabled
   const controlsEnabled = connectionStatus.connected && !emergencyActive && manualModeActive;
 
-
-
   const handleBackButton = async () => {
     try {
       console.log('Deactivating manual mode before leaving...');
@@ -480,294 +530,337 @@ const Manual = () => {
     }
   };
 
+  const statusDisplay = getStatusDisplay(machineStatus);
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       <div className="w-full mx-auto">
 
-        {/* ══════════════ HEADER ══════════════ */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 md:mb-8">
+        {/* ══════════════ HEADER with Status Bar ══════════════ */}
+        <header className="bg-white/80 backdrop-blur-lg shadow-xl border-b border-gray-200/50">
+          {/* Top row - Title and Controls */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-4 md:px-6 py-4">
+            <div className="flex items-center space-x-2 md:space-x-4">
+              <button
+                onClick={handleBackButton}
+                className="p-2 hover:bg-white hover:shadow-md rounded-lg transition-all duration-200"
+              >
+                <ArrowLeft className="w-6 h-6 text-slate-600" />
+              </button>
+              <h1 className="text-2xl md:text-3xl font-bold text-slate-800">Manual Mode</h1>
+            </div>
 
-          <div className="flex items-center space-x-2 md:space-x-4">
-            <button
-              onClick={handleBackButton}
-              className="p-2 hover:bg-white hover:shadow-md rounded-lg transition-all duration-200"
-            >
-              <ArrowLeft className="w-6 h-6 text-slate-600" />
-            </button>
-            <h1 className="text-2xl md:text-3xl font-bold text-slate-800">Manual Mode</h1>
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              {emergencyActive && (
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-100 text-red-700 border border-red-300 animate-pulse">
+                  <AlertTriangle className="w-4 h-4" />
+                  <span className="text-sm font-semibold">EMERGENCY</span>
+                </div>
+              )}
+
+              {manualModeActive && controlsEnabled && (
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-100 text-green-700 border border-green-300">
+                  <span className="text-sm font-semibold">MANUAL MODE ACTIVE</span>
+                </div>
+              )}
+
+              <div className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg ${connectionStatus.connected ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-red-100 text-red-700 border border-red-200'}`}>
+                <Usb className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="text-xs sm:text-sm font-medium">
+                  {connectionStatus.connected ? 'USB Connected' : 'USB Disconnected'}
+                </span>
+              </div>
+
+              {!connectionStatus.connected && (
+                <button
+                  onClick={handleReconnect}
+                  className="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Reconnect
+                </button>
+              )}
+
+              <button
+                onClick={() => {
+                  if (window.confirm('Are you sure you want to exit?')) window.close();
+                }}
+                className="group bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl lg:rounded-2xl w-8 h-8 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-xl border border-red-400/30 shrink-0"
+              >
+                <Power className="w-3 h-3 sm:w-5 sm:h-5 lg:w-6 lg:h-6 group-hover:scale-110 transition-transform duration-300" />
+              </button>
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            {emergencyActive && (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-100 text-red-700 border border-red-300 animate-pulse">
-                <AlertTriangle className="w-4 h-4" />
-                <span className="text-sm font-semibold">EMERGENCY</span>
+          {/* Bottom row - Machine Status Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 md:px-6 py-3 border-t border-gray-200/50 bg-gray-50/50">
+            {/* Machine Status */}
+            <div className="flex items-center gap-3">
+              <span className="text-gray-600 text-sm font-medium">Machine Status:</span>
+              <div className={`px-3 py-1 rounded-full ${statusDisplay.bg}`}>
+                <span className={`text-sm font-bold ${statusDisplay.color}`}>
+                  {statusDisplay.text}
+                </span>
               </div>
-            )}
+            </div>
 
-            {manualModeActive && controlsEnabled && (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-100 text-green-700 border border-green-300">
-                <span className="text-sm font-semibold">MANUAL MODE ACTIVE</span>
-              </div>
-            )}
-
-            <div className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg ${connectionStatus.connected ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-red-100 text-red-700 border border-red-200'}`}>
-              <Usb className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span className="text-xs sm:text-sm font-medium">
-                {connectionStatus.connected ? 'USB Connected' : 'USB Disconnected'}
+            {/* Horizontal Distance */}
+            <div className="flex items-center gap-3">
+              <span className="text-gray-600 text-sm font-medium">Horizontal Distance:</span>
+              <span className="text-gray-800 text-sm font-mono font-bold bg-gray-100 px-3 py-1 rounded-lg">
+                {horizontalDistance.toFixed(1)} mm
               </span>
             </div>
 
-            {!connectionStatus.connected && (
-              <button
-                onClick={handleReconnect}
-                className="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Reconnect
-              </button>
-            )}
+            {/* Vertical Distance */}
+            <div className="flex items-center gap-3">
+              <span className="text-gray-600 text-sm font-medium">Vertical Distance:</span>
+              <span className="text-gray-800 text-sm font-mono font-bold bg-gray-100 px-3 py-1 rounded-lg">
+                {verticalDistance.toFixed(1)} mm
+              </span>
+            </div>
 
-            <button
-              onClick={() => {
-                if (window.confirm('Are you sure you want to exit?')) window.close();
-              }}
-              className="group bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl lg:rounded-2xl w-8 h-8 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-xl border border-red-400/30 shrink-0"
-            >
-              <Power className="w-3 h-3 sm:w-5 sm:h-5 lg:w-6 lg:h-6 group-hover:scale-110 transition-transform duration-300" />
-            </button>
+            {/* Force */}
+            <div className="flex items-center gap-3">
+              <span className="text-gray-600 text-sm font-medium">Force:</span>
+              <span className="text-gray-800 text-sm font-mono font-bold bg-gray-100 px-3 py-1 rounded-lg">
+                {statusForce.toFixed(2)} mN
+              </span>
+            </div>
           </div>
-        </div>
+        </header>
 
         {/* ══════════════ MAIN GRID ══════════════ */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 items-start">
+        <div className="p-4 md:p-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 items-start">
 
-          {/* ══════════ LEFT: Graph + Live Data ══════════ */}
-          <div className="flex flex-col w-full space-y-4 md:space-y-6 min-w-0">
+            {/* ══════════ LEFT: Graph + Live Data ══════════ */}
+            <div className="flex flex-col w-full space-y-4 md:space-y-6 min-w-0">
 
-            {/* Graph card */}
-            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
-              <div className="p-4 md:p-6">
+              {/* Graph card */}
+              <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+                <div className="p-4 md:p-6">
 
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 md:mb-6">
-                  <div className="flex items-center space-x-2 md:space-x-3">
-                    <div className="p-2 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg shadow-sm">
-                      <TrendingUp className="w-5 h-5 text-white" />
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 md:mb-6">
+                    <div className="flex items-center space-x-2 md:space-x-3">
+                      <div className="p-2 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg shadow-sm">
+                        <TrendingUp className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-semibold text-slate-800">Probe Distance vs Force</h3>
+                        <p className="text-slate-500 text-xs font-medium">Real-time analysis</p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="text-xl font-semibold text-slate-800">Probe Distance vs Force</h3>
-                      <p className="text-slate-500 text-xs font-medium">Real-time analysis</p>
+                    <div className="flex items-center space-x-3 sm:space-x-5 bg-slate-50/50 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl border border-slate-100 shadow-sm">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-8 h-1 bg-blue-500 rounded-full" />
+                        <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">Probe Down</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <div className="w-8 h-1 bg-red-500 rounded-full" />
+                        <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">Probe Up</span>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-3 sm:space-x-5 bg-slate-50/50 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl border border-slate-100 shadow-sm">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-8 h-1 bg-blue-500 rounded-full" />
-                      <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">Probe Down</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <div className="w-8 h-1 bg-red-500 rounded-full" />
-                      <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">Probe Up</span>
-                    </div>
+
+                  <div className="w-full" style={{ height: '320px' }}>
+                    <Line data={chartConfig} options={chartOptions} redraw={false} />
                   </div>
                 </div>
+              </div>
 
-                <div className="w-full" style={{ height: '320px' }}>
-                  <Line data={chartConfig} options={chartOptions} redraw={false} />
+              {/* Live Data card */}
+              <div className="bg-white rounded-xl md:rounded-2xl shadow-xl border border-slate-200 p-4 md:p-6">
+                <div className="grid grid-cols-3 gap-3 md:gap-6">
+
+                  {/* Force - R54 */}
+                  <div className="flex items-center space-x-3 bg-slate-50 p-3 md:p-5 rounded-xl border border-slate-100">
+                    <div className="p-2 md:p-3 bg-blue-100 rounded-xl shrink-0">
+                      <svg className="w-5 h-5 md:w-6 md:h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-slate-500 text-xs font-medium mb-0.5 truncate">Force (R54)</p>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-slate-800 font-bold text-lg md:text-2xl">
+                          {force === '--' ? '--' : `${parseFloat(force).toFixed(2)}`}
+                        </span>
+                        <span className="text-slate-400 text-xs">mN</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Probe Distance - R70 */}
+                  <div className="flex items-center space-x-3 bg-slate-50 p-3 md:p-5 rounded-xl border border-slate-100">
+                    <div className="p-2 md:p-3 bg-blue-100 rounded-xl shrink-0">
+                      <ChevronDown className="w-5 h-5 md:w-6 md:h-6 text-blue-600" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-slate-500 text-xs font-medium mb-0.5 truncate">Probe Dist. (R70)</p>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-slate-800 font-bold text-lg md:text-2xl">
+                          {probeDistance === '--' ? '--' : `${probeDistance}`}
+                        </span>
+                        <span className="text-slate-400 text-xs">mm</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Catheter Distance - 6550 */}
+                  <div className="flex items-center space-x-3 bg-slate-50 p-3 md:p-5 rounded-xl border border-slate-100">
+                    <div className="p-2 md:p-3 bg-emerald-100 rounded-xl shrink-0">
+                      <Move className="w-5 h-5 md:w-6 md:h-6 text-emerald-600" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-slate-500 text-xs font-medium mb-0.5 truncate">Catheter Dist. (6550)</p>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-slate-800 font-bold text-lg md:text-2xl">
+                          {catheterDistance === '--' ? '--' : `${catheterDistance}`}
+                        </span>
+                        <span className="text-slate-400 text-xs">mm</span>
+                      </div>
+                    </div>
+                  </div>
+
                 </div>
               </div>
             </div>
+            {/* end left column */}
 
-            {/* Live Data card */}
-            <div className="bg-white rounded-xl md:rounded-2xl shadow-xl border border-slate-200 p-4 md:p-6">
-              <div className="grid grid-cols-3 gap-3 md:gap-6">
+            {/* ══════════ RIGHT: [Probe | Clamp] + Catheter ══════════ */}
+            <div className="flex flex-col gap-4 md:gap-6 w-full">
 
-                {/* Force - R54 */}
-                <div className="flex items-center space-x-3 bg-slate-50 p-3 md:p-5 rounded-xl border border-slate-100">
-                  <div className="p-2 md:p-3 bg-blue-100 rounded-xl shrink-0">
-                    <svg className="w-5 h-5 md:w-6 md:h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-slate-500 text-xs font-medium mb-0.5 truncate">Force (R54)</p>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-slate-800 font-bold text-lg md:text-2xl">
-                        {force === '--' ? '--' : `${parseFloat(force).toFixed(2)}`}
-                      </span>
-                      <span className="text-slate-400 text-xs">mN</span>
+              {/* Top row: Probe + Clamp side by side */}
+              <div className="flex gap-4 md:gap-6">
+
+                {/* Probe card */}
+                <div className="bg-white rounded-xl md:rounded-2xl shadow-xl border border-slate-200 p-4 md:p-6 flex-1 min-w-0">
+                  <h3 className="text-base font-semibold text-slate-800 mb-1 text-center">Probe</h3>
+                  <p className="text-[10px] text-slate-400 italic mb-4 text-center">
+                    Status Indicators
+                  </p>
+
+                  <div className="flex flex-col items-center gap-5">
+
+                    {/* Probe Up - M4 */}
+                    <div className="flex flex-col items-center gap-2">
+                      <div
+                        className={circleClass(probeUp, 'bg-red-500 border-red-600')}
+                      >
+                        <ChevronUp className="w-7 h-7 sm:w-8 sm:h-8" />
+                        {probeUp && (
+                          <div className="absolute -inset-1 bg-red-500 rounded-full animate-ping opacity-30 pointer-events-none" />
+                        )}
+                      </div>
+                      <span className="text-xs font-medium text-slate-600">Probe Up (M4)</span>
                     </div>
+
+                    <div className="w-full border-t border-slate-100" />
+
+                    {/* Probe Down - M5 */}
+                    <div className="flex flex-col items-center gap-2">
+                      <div
+                        className={circleClass(probeDown, 'bg-blue-500 border-blue-600')}
+                      >
+                        <ChevronDown className="w-7 h-7 sm:w-8 sm:h-8" />
+                        {probeDown && (
+                          <div className="absolute -inset-1 bg-blue-500 rounded-full animate-ping opacity-30 pointer-events-none" />
+                        )}
+                      </div>
+                      <span className="text-xs font-medium text-slate-600">Probe Down (M5)</span>
+                    </div>
+
                   </div>
                 </div>
+                {/* end Probe card */}
 
-                {/* Probe Distance - R70 */}
-                <div className="flex items-center space-x-3 bg-slate-50 p-3 md:p-5 rounded-xl border border-slate-100">
-                  <div className="p-2 md:p-3 bg-blue-100 rounded-xl shrink-0">
-                    <ChevronDown className="w-5 h-5 md:w-6 md:h-6 text-blue-600" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-slate-500 text-xs font-medium mb-0.5 truncate">Probe Dist. (R70)</p>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-slate-800 font-bold text-lg md:text-2xl">
-                        {probeDistance === '--' ? '--' : `${probeDistance}`}
-                      </span>
-                      <span className="text-slate-400 text-xs">mm</span>
+                {/* Clamp card */}
+                <div className="bg-white rounded-xl md:rounded-2xl shadow-xl border border-slate-200 p-4 md:p-6 flex-1 min-w-0">
+                  <h3 className="text-base font-semibold text-slate-800 mb-1 text-center">Clamp</h3>
+                  <p className="text-[10px] text-slate-400 italic mb-4 text-center">Coil 2003 (M3)</p>
+
+                  <div className="flex justify-center">
+                    <div
+                      className={circleClass(clamp, 'bg-purple-500 border-purple-600')}
+                    >
+                      <img
+                        src={clampIcon}
+                        alt="Clamp"
+                        className="w-8 h-8 sm:w-10 sm:h-10 object-contain"
+                        style={{ filter: clamp ? 'brightness(0) invert(1)' : 'none' }}
+                      />
+                      {clamp && (
+                        <div className="absolute -inset-1 bg-purple-500 rounded-full animate-ping opacity-30 pointer-events-none" />
+                      )}
                     </div>
                   </div>
-                </div>
 
-                {/* Catheter Distance - 6550 */}
-                <div className="flex items-center space-x-3 bg-slate-50 p-3 md:p-5 rounded-xl border border-slate-100">
-                  <div className="p-2 md:p-3 bg-emerald-100 rounded-xl shrink-0">
-                    <Move className="w-5 h-5 md:w-6 md:h-6 text-emerald-600" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-slate-500 text-xs font-medium mb-0.5 truncate">Catheter Dist. (6550)</p>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-slate-800 font-bold text-lg md:text-2xl">
-                        {catheterDistance === '--' ? '--' : `${catheterDistance}`}
-                      </span>
-                      <span className="text-slate-400 text-xs">mm</span>
-                    </div>
+                  <div className="mt-4 flex justify-center">
+                    {statusBadge(clamp, 'bg-purple-100 text-purple-700', 'bg-slate-100 text-slate-500', 'CLAMPED', 'UNCLAMPED')}
                   </div>
                 </div>
+                {/* end Clamp card */}
 
               </div>
-            </div>
-          </div>
-          {/* end left column */}
+              {/* end top row */}
 
-          {/* ══════════ RIGHT: [Probe | Clamp] + Catheter ══════════ */}
-          <div className="flex flex-col gap-4 md:gap-6 w-full">
-
-            {/* Top row: Probe + Clamp side by side */}
-            <div className="flex gap-4 md:gap-6">
-
-              {/* Probe card */}
-              <div className="bg-white rounded-xl md:rounded-2xl shadow-xl border border-slate-200 p-4 md:p-6 flex-1 min-w-0">
-                <h3 className="text-base font-semibold text-slate-800 mb-1 text-center">Probe</h3>
+              {/* Catheter card — full width below */}
+              <div className="bg-white rounded-xl md:rounded-2xl shadow-xl border border-slate-200 p-4 md:p-6">
+                <h3 className="text-base font-semibold text-slate-800 mb-1 text-center">Catheter</h3>
                 <p className="text-[10px] text-slate-400 italic mb-4 text-center">
                   Status Indicators
                 </p>
 
-                <div className="flex flex-col items-center gap-5">
+                <div className="flex items-start justify-around gap-4">
 
-                  {/* Probe Up - M4 */}
+                  {/* Catheter Forward - M7 */}
                   <div className="flex flex-col items-center gap-2">
                     <div
-                      className={circleClass(probeUp, 'bg-red-500 border-red-600')}
+                      className={circleClass(catheterForward, 'bg-green-500 border-green-600')}
                     >
-                      <ChevronUp className="w-7 h-7 sm:w-8 sm:h-8" />
-                      {probeUp && (
-                        <div className="absolute -inset-1 bg-red-500 rounded-full animate-ping opacity-30 pointer-events-none" />
+                      <ChevronLeft className="w-7 h-7 sm:w-8 sm:h-8" />
+                      {catheterForward && (
+                        <div className="absolute -inset-1 bg-green-500 rounded-full animate-ping opacity-30 pointer-events-none" />
                       )}
                     </div>
-                    <span className="text-xs font-medium text-slate-600">Probe Up (M4)</span>
+                    <span className="text-xs font-medium text-slate-600">Forward (M7)</span>
                   </div>
 
-                  <div className="w-full border-t border-slate-100" />
+                  <div className="self-center w-px h-20 bg-slate-100" />
 
-                  {/* Probe Down - M5 */}
+                  {/* Catheter Backward - M6 */}
                   <div className="flex flex-col items-center gap-2">
                     <div
-                      className={circleClass(probeDown, 'bg-blue-500 border-blue-600')}
+                      className={circleClass(catheterBack, 'bg-amber-500 border-amber-600')}
                     >
-                      <ChevronDown className="w-7 h-7 sm:w-8 sm:h-8" />
-                      {probeDown && (
-                        <div className="absolute -inset-1 bg-blue-500 rounded-full animate-ping opacity-30 pointer-events-none" />
+                      <ChevronRight className="w-7 h-7 sm:w-8 sm:h-8" />
+                      {catheterBack && (
+                        <div className="absolute -inset-1 bg-amber-500 rounded-full animate-ping opacity-30 pointer-events-none" />
                       )}
                     </div>
-                    <span className="text-xs font-medium text-slate-600">Probe Down (M5)</span>
+                    <span className="text-xs font-medium text-slate-600">Backward (M6)</span>
                   </div>
 
                 </div>
               </div>
-              {/* end Probe card */}
-
-              {/* Clamp card */}
-              <div className="bg-white rounded-xl md:rounded-2xl shadow-xl border border-slate-200 p-4 md:p-6 flex-1 min-w-0">
-                <h3 className="text-base font-semibold text-slate-800 mb-1 text-center">Clamp</h3>
-                <p className="text-[10px] text-slate-400 italic mb-4 text-center">Coil 2003 (M3)</p>
-
-                <div className="flex justify-center">
-                  <div
-                    className={circleClass(clamp, 'bg-purple-500 border-purple-600')}
-                  >
-                    <img
-                      src={clampIcon}
-                      alt="Clamp"
-                      className="w-8 h-8 sm:w-10 sm:h-10 object-contain"
-                      style={{ filter: clamp ? 'brightness(0) invert(1)' : 'none' }}
-                    />
-                    {clamp && (
-                      <div className="absolute -inset-1 bg-purple-500 rounded-full animate-ping opacity-30 pointer-events-none" />
-                    )}
-                  </div>
-                </div>
-
-                <div className="mt-4 flex justify-center">
-                  {statusBadge(clamp, 'bg-purple-100 text-purple-700', 'bg-slate-100 text-slate-500', 'CLAMPED', 'UNCLAMPED')}
-                </div>
-              </div>
-              {/* end Clamp card */}
+              {/* end Catheter card */}
 
             </div>
-            {/* end top row */}
-
-            {/* Catheter card — full width below */}
-            <div className="bg-white rounded-xl md:rounded-2xl shadow-xl border border-slate-200 p-4 md:p-6">
-              <h3 className="text-base font-semibold text-slate-800 mb-1 text-center">Catheter</h3>
-              <p className="text-[10px] text-slate-400 italic mb-4 text-center">
-                Status Indicators
-              </p>
-
-              <div className="flex items-start justify-around gap-4">
-
-                {/* Catheter Forward - M7 */}
-                <div className="flex flex-col items-center gap-2">
-                  <div
-                    className={circleClass(catheterForward, 'bg-green-500 border-green-600')}
-                  >
-                    <ChevronLeft className="w-7 h-7 sm:w-8 sm:h-8" />
-                    {catheterForward && (
-                      <div className="absolute -inset-1 bg-green-500 rounded-full animate-ping opacity-30 pointer-events-none" />
-                    )}
-                  </div>
-                  <span className="text-xs font-medium text-slate-600">Forward (M7)</span>
-                </div>
-
-                <div className="self-center w-px h-20 bg-slate-100" />
-
-                {/* Catheter Backward - M6 */}
-                <div className="flex flex-col items-center gap-2">
-                  <div
-                    className={circleClass(catheterBack, 'bg-amber-500 border-amber-600')}
-                  >
-                    <ChevronRight className="w-7 h-7 sm:w-8 sm:h-8" />
-                    {catheterBack && (
-                      <div className="absolute -inset-1 bg-amber-500 rounded-full animate-ping opacity-30 pointer-events-none" />
-                    )}
-                  </div>
-                  <span className="text-xs font-medium text-slate-600">Backward (M6)</span>
-                </div>
-
-              </div>
-            </div>
-            {/* end Catheter card */}
+            {/* end right column */}
 
           </div>
-          {/* end right column */}
+          {/* end main grid */}
+
+          {/* Controls disabled message */}
+          {(!controlsEnabled && connectionStatus.connected && !emergencyActive) && (
+            <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
+              <p className="text-sm text-yellow-800">
+                Waiting for manual mode activation... Please ensure connection is stable.
+              </p>
+            </div>
+          )}
 
         </div>
-        {/* end main grid */}
-
-        {/* Controls disabled message */}
-        {(!controlsEnabled && connectionStatus.connected && !emergencyActive) && (
-          <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
-            <p className="text-sm text-yellow-800">
-              Waiting for manual mode activation... Please ensure connection is stable.
-            </p>
-          </div>
-        )}
-
       </div>
     </div>
   );
