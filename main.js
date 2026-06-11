@@ -133,6 +133,7 @@ const COIL_CATHETER_FORWARD = 2007; // M7
 const REG_DISTANCE = 70;  // 1 register (16-bit integer) — Probe Distance
 const REG_FORCE = 54;     // 2 registers (32-bit float)  — Force
 const REG_MANUAL_DISTANCE = 71;   // 1 register (16-bit integer) — Catheter Distance (R71)
+const REG_MACHINE_STATUS = 11;    // 1 register (16-bit integer) — Machine Status (R11): 1=IDLE, 2=HOMING, 3=READY
 
 // -------------------------
 // Helper: Convert two 16-bit Modbus registers → 32-bit float (Little-Endian word order)
@@ -165,6 +166,7 @@ let plcState = {
   distance: 0,        // R70  — Probe Distance (mm)
   force_mN: 0,        // R54  — Force (mN, 32-bit float)
   catheterDistance: 0,// 6550 — Catheter Distance (mm)
+  machineStatus: 1,   // R11  — Machine Status (1=IDLE, 2=HOMING, 3=READY)
   coilLLS: false,
   clamp: false,
   probeUp: false,
@@ -852,6 +854,25 @@ async function processModbusLoop() {
       } catch (e) {
         console.error('❌ REG_CATHETER(R71) read error:', e.message);
       }
+      // Read Machine Status Register R11
+      try {
+        const statusRes = await client.readHoldingRegisters(REG_MACHINE_STATUS, 1);
+        plcState.machineStatus = statusRes.data[0];
+        cycleSuccess = true;
+        if (Date.now() - (plcState._statusLogTime || 0) > 5000) {
+          let statusText = '';
+          switch(plcState.machineStatus) {
+            case 1: statusText = 'IDLE'; break;
+            case 2: statusText = 'HOMING'; break;
+            case 3: statusText = 'READY'; break;
+            default: statusText = 'IDLE'; break;
+          }
+          console.log(`📊 Machine Status R11: ${plcState.machineStatus} (${statusText})`);
+          plcState._statusLogTime = Date.now();
+        }
+      } catch (e) {
+        console.error('❌ REG_MACHINE_STATUS(R11) read error:', e.message);
+      }
 
       // Heartbeat pulse check: if pulse has stopped, trigger disconnection
       const HEARTBEAT_TIMEOUT = 4000; // 4 seconds timeout
@@ -909,6 +930,18 @@ async function readPLCData() {
   // Return cached state immediately
   return {
     success: true,
+
+
+    // Machine Status — R11
+    machineStatus: plcState.machineStatus,
+    machineStatusDisplay: (() => {
+      switch(plcState.machineStatus) {
+        case 1: return 'IDLE';
+        case 2: return 'HOMING';
+        case 3: return 'READY';
+        default: return 'UNKNOWN';
+      }
+    })(),
 
     // Probe Distance — R70
     distance: plcState.distance,

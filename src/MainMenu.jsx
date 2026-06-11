@@ -17,6 +17,12 @@ const MainMenu = () => {
   const [emergencyActive, setEmergencyActive] = useState(false);
   const [powerActive, setPowerActive] = useState(false);
 
+  // Status bar states
+  const [machineStatus, setMachineStatus] = useState(1); // 1=IDLE, 2=HOMING, 3=READY
+  const [horizontalDistance, setHorizontalDistance] = useState(0);
+  const [verticalDistance, setVerticalDistance] = useState(0);
+  const [force, setForce] = useState(0);
+
   // Get user role from localStorage
   useEffect(() => {
     const user = localStorage.getItem('user');
@@ -32,18 +38,6 @@ const MainMenu = () => {
 
   // Define all menu options
   const allMenuOptions = [
-    // {
-    //   id: 'load-config',
-    //   title: 'Load Configuration',
-    //   icon: (
-    //     <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    //       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-    //     </svg>
-    //   ),
-    //   description: 'Load existing configuration files',
-    //   gradient: 'from-blue-500 to-cyan-500',
-    //   allowedRoles: ['admin', 'operator'] // Both can access
-    // },
     {
       id: 'test-selection',
       title: 'Test Selection',
@@ -54,7 +48,7 @@ const MainMenu = () => {
       ),
       description: 'Select between 2-Point and 3-Point tests',
       gradient: 'from-teal-500 to-emerald-500',
-      allowedRoles: ['admin', 'operator'] // Both can access
+      allowedRoles: ['admin', 'operator']
     },
     {
       id: 'manual-mode',
@@ -68,7 +62,7 @@ const MainMenu = () => {
       ),
       description: 'Manually control the testing process',
       gradient: 'from-purple-500 to-pink-500',
-      allowedRoles: ['admin', 'operator'] // Both can access
+      allowedRoles: ['admin', 'operator']
     },
     {
       id: 'process-logs',
@@ -80,34 +74,8 @@ const MainMenu = () => {
       ),
       description: 'View detailed process logs and history',
       gradient: 'from-green-500 to-emerald-500',
-      allowedRoles: ['admin', 'operator'] // Both can access
+      allowedRoles: ['admin', 'operator']
     },
-    // {
-    //   id: 'create-config',
-    //   title: 'Create Configuration',
-    //   icon: (
-    //     <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    //       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-    //       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-    //     </svg>
-    //   ),
-    //   description: 'Create new configuration settings',
-    //   gradient: 'from-orange-500 to-amber-500',
-    //   allowedRoles: ['admin'] // Only admin can access
-    // },
-    // {
-    //   id: 'delete-config',
-    //   title: 'Delete Configuration',
-    //   icon: (
-    //     <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    //       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-    //     </svg>
-    //   ),
-    //   description: 'Remove existing configuration files',
-    //   variant: 'danger',
-    //   gradient: 'from-red-500 to-rose-500',
-    //   allowedRoles: ['admin'] // Only admin can access
-    // },
     {
       id: 'check-updates',
       title: 'Check for Updates',
@@ -118,15 +86,55 @@ const MainMenu = () => {
       ),
       description: 'Check if a newer version is available on GitHub',
       gradient: 'from-indigo-500 to-purple-500',
-      allowedRoles: ['admin'] // Only admin can access
+      allowedRoles: ['admin']
     },
-
   ];
 
   // Filter menu options based on user role
   const menuOptions = userRole 
     ? allMenuOptions.filter(option => option.allowedRoles.includes(userRole))
     : [];
+
+  // Function to get status text and color based on R11 value
+  const getStatusDisplay = (statusValue) => {
+    switch(statusValue) {
+      case 1:
+        return { text: 'IDLE', color: 'text-yellow-600', bg: 'bg-yellow-100' };
+      case 2:
+        return { text: 'HOMING', color: 'text-blue-600', bg: 'bg-blue-100' };
+      case 3:
+        return { text: 'READY', color: 'text-green-600', bg: 'bg-green-100' };
+      default:
+        return { text: 'UNKNOWN', color: 'text-gray-600', bg: 'bg-gray-100' };
+    }
+  };
+
+  // Function to fetch real-time data
+  const fetchRealTimeData = async () => {
+    try {
+      const data = await window.api.readData();
+      if (data && data.success) {
+        // Update machine status from R11
+        if (data.machineStatus !== undefined) {
+          setMachineStatus(data.machineStatus);
+        }
+        // Update horizontal distance from R71
+        if (data.catheterDistance !== undefined) {
+          setHorizontalDistance(data.catheterDistance);
+        }
+        // Update vertical distance from R70
+        if (data.distance !== undefined) {
+          setVerticalDistance(data.distance);
+        }
+        // Update force from R54
+        if (data.force_mN !== undefined) {
+          setForce(data.force_mN);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching real-time data:', error);
+    }
+  };
 
   useEffect(() => {
     // Initial checks
@@ -149,11 +157,16 @@ const MainMenu = () => {
     };
     window.addEventListener('power-status-change', handlePowerStatus);
 
+    // Start real-time data fetching
+    fetchRealTimeData();
+    const intervalId = setInterval(fetchRealTimeData, 500); // Fetch every 500ms
+
     // Cleanup
     return () => {
       window.removeEventListener('modbus-status-change', handleModbusStatus);
       window.removeEventListener('emergency-status-change', handleEmergencyStatus);
       window.removeEventListener('power-status-change', handlePowerStatus);
+      clearInterval(intervalId);
     };
   }, []);
 
@@ -202,22 +215,6 @@ const MainMenu = () => {
     }
   };
 
-  // Handle manual connection attempt
-  const handleConnect = async () => {
-    try {
-      console.log('Attempting to connect manually...');
-      const connected = await window.api.connectModbus();
-      if (connected) {
-        setConnectionStatus('connected');
-        console.log('Manual connection successful');
-      } else {
-        console.log('Manual connection failed');
-      }
-    } catch (error) {
-      console.error('Connection error:', error);
-    }
-  };
-
   // Handle reconnect
   const handleReconnect = async () => {
     try {
@@ -256,15 +253,6 @@ const MainMenu = () => {
     setSelectedOption(option.id);
     console.log(`Selected: ${option.title}`);
 
-    // if (option.id === 'create-config') {
-    //   navigate('/create-config');
-    // }
-    // else if (option.id === 'load-config') {
-    //   navigate('/handle-config/load');
-    // }
-    // else if (option.id === 'delete-config') {
-    //   navigate('/handle-config/delete');
-    // }
     if (option.id === 'test-selection') {
       navigate('/test-selection');
     }
@@ -314,6 +302,8 @@ const MainMenu = () => {
     setShowPowerDropdown(!showPowerDropdown);
   };
 
+  const statusDisplay = getStatusDisplay(machineStatus);
+
   // Show loading or redirect if no user role
   if (!userRole) {
     return (
@@ -329,86 +319,117 @@ const MainMenu = () => {
   return (
     <div className="min-h-screen flex flex-col bg-linear-to-br from-slate-50 via-blue-50 to-indigo-100 shrink-0 ">
       {/* Header */}
-      <header className="flex items-center px-6 py-4 bg-white/80 backdrop-blur-lg shadow-xl border-b border-gray-200/50 relative z-10 flex-shrink-o min-h-0">
-
-        <div className="flex-1 flex items-center gap-4">
-          <h1 className="text-3xl font-bold bg-linear-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
-            Main Menu
-          </h1>
-          {/* Display user role badge */}
-          <div className={`px-3 py-1 rounded-full text-sm font-medium ${
-            userRole === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
-          }`}>
-            {userRole === 'admin' ? 'Administrator' : 'Operator'}
-          </div>
-          {emergencyActive && (
-            <div className="bg-red-600 text-white px-4 py-2 rounded-full animate-pulse border-2 border-red-400 shadow-lg flex items-center gap-2">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              <span className="font-bold tracking-wider">EMERGENCY BUTTON ACTIVATED</span>
+      <header className="flex flex-col px-6 py-4 bg-white/80 backdrop-blur-lg shadow-xl border-b border-gray-200/50 relative z-10">
+        {/* Top row - Title and Controls */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <h1 className="text-3xl font-bold bg-linear-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
+              Main Menu
+            </h1>
+            {/* Display user role badge */}
+            <div className={`px-3 py-1 rounded-full text-sm font-medium ${
+              userRole === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
+            }`}>
+              {userRole === 'admin' ? 'Administrator' : 'Operator'}
             </div>
-          )}
-        </div>
-
-        {/* Connection & Power Status Indicators */}
-        <div className="flex items-center gap-3 mr-4">
-          {/* Power Status Indicator */}
-          {/* <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${powerActive ? 'bg-green-100 border-green-200' : 'bg-red-100 border-red-200'} border`}>
-            <Power className={`w-4 h-4 ${powerActive ? 'text-green-700' : 'text-red-700'}`} />
-            <span className={`text-sm font-medium ${powerActive ? 'text-green-700' : 'text-red-700'}`}>
-              POWERED {powerActive ? 'ON' : 'OFF'}
-            </span>
-          </div> */}
-
-          {/* USB Status Indicator */}
-          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${connectionStatus === 'connected' ? 'bg-green-100 border-green-200' : 'bg-red-100 border-red-200'} border`}>
-            <Usb className={`w-4 h-4 ${connectionStatus === 'connected' ? 'text-green-700' : 'text-red-700'}`} />
-            <span className={`text-sm font-medium ${connectionStatus === 'connected' ? 'text-green-700' : 'text-red-700'}`}>
-              {connectionStatus === 'connected' ? 'USB Connected' : 'USB Disconnected'}
-            </span>
-          </div>
-
-          {connectionStatus === 'disconnected' && connectionChecked && (
-            <button
-              onClick={handleReconnect}
-              className="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Reconnect
-            </button>
-          )}
-        </div>
-        
-        {/* Power Button with Logout Option */}
-        <div className="relative" ref={dropdownRef}>
-          <button
-            onClick={togglePowerDropdown}
-            className="group bg-linear-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl lg:rounded-2xl w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-xl border border-red-400/30"
-          >
-            <Power className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 group-hover:scale-110 transition-transform duration-300" />
-          </button>
-          
-          {/* Dropdown Menu */}
-          {showPowerDropdown && (
-            <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50">
-              <button
-                onClick={handleLogout}
-                className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 transition-colors flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            {emergencyActive && (
+              <div className="bg-red-600 text-white px-4 py-2 rounded-full animate-pulse border-2 border-red-400 shadow-lg flex items-center gap-2">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
-                Logout
-              </button>
-              <button
-                onClick={handleExit}
-                className="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2"
-              >
-                <Power className="w-4 h-4" />
-                Exit Application
-              </button>
+                <span className="font-bold tracking-wider">EMERGENCY BUTTON ACTIVATED</span>
+              </div>
+            )}
+          </div>
+
+          {/* Connection & Power Status Indicators */}
+          <div className="flex items-center gap-3">
+            {/* USB Status Indicator */}
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${connectionStatus === 'connected' ? 'bg-green-100 border-green-200' : 'bg-red-100 border-red-200'} border`}>
+              <Usb className={`w-4 h-4 ${connectionStatus === 'connected' ? 'text-green-700' : 'text-red-700'}`} />
+              <span className={`text-sm font-medium ${connectionStatus === 'connected' ? 'text-green-700' : 'text-red-700'}`}>
+                {connectionStatus === 'connected' ? 'USB Connected' : 'USB Disconnected'}
+              </span>
             </div>
-          )}
+
+            {connectionStatus === 'disconnected' && connectionChecked && (
+              <button
+                onClick={handleReconnect}
+                className="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Reconnect
+              </button>
+            )}
+            
+            {/* Power Button with Logout Option */}
+            <div className="relative" ref={dropdownRef}>
+              <button
+                onClick={togglePowerDropdown}
+                className="group bg-linear-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl lg:rounded-2xl w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-xl border border-red-400/30"
+              >
+                <Power className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 group-hover:scale-110 transition-transform duration-300" />
+              </button>
+              
+              {/* Dropdown Menu */}
+              {showPowerDropdown && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50">
+                  <button
+                    onClick={handleLogout}
+                    className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 transition-colors flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    Logout
+                  </button>
+                  <button
+                    onClick={handleExit}
+                    className="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2"
+                  >
+                    <Power className="w-4 h-4" />
+                    Exit Application
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom row - Machine Status Bar */}
+        <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-200/50">
+          {/* Machine Status */}
+          <div className="flex items-center gap-3">
+            <span className="text-gray-600 text-sm font-medium">Machine Status:</span>
+            <div className={`px-3 py-1 rounded-full ${statusDisplay.bg}`}>
+              <span className={`text-sm font-bold ${statusDisplay.color}`}>
+                {statusDisplay.text}
+              </span>
+            </div>
+          </div>
+
+          {/* Horizontal Distance */}
+          <div className="flex items-center gap-3">
+            <span className="text-gray-600 text-sm font-medium">Horizontal Distance:</span>
+            <span className="text-gray-800 text-sm font-mono font-bold bg-gray-100 px-3 py-1 rounded-lg">
+              {horizontalDistance.toFixed(1)} mm
+            </span>
+          </div>
+
+          {/* Vertical Distance */}
+          <div className="flex items-center gap-3">
+            <span className="text-gray-600 text-sm font-medium">Vertical Distance:</span>
+            <span className="text-gray-800 text-sm font-mono font-bold bg-gray-100 px-3 py-1 rounded-lg">
+              {verticalDistance.toFixed(1)} mm
+            </span>
+          </div>
+
+          {/* Force */}
+          <div className="flex items-center gap-3">
+            <span className="text-gray-600 text-sm font-medium">Force:</span>
+            <span className="text-gray-800 text-sm font-mono font-bold bg-gray-100 px-3 py-1 rounded-lg">
+              {force.toFixed(2)} mN
+            </span>
+          </div>
         </div>
       </header>
 
