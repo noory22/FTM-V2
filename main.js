@@ -408,7 +408,7 @@ async function startCSVLogging(config) {
 
     // CSV HEADER
     csvStream.write(
-      "Timestamp,Distance(mm),Force(mN),Temperature,ConfigName,PathLength,ThresholdForce,InsertionStrokeLength,RetractionStrokelength,NumberOfCurves,CurveDistances\n"
+      "Timestamp,Distance(mm),Force(mN),Temperature,ConfigName,PathLength,ThresholdForce\n"
     );
 
     return { success: true, filePath: csvFilePath };
@@ -431,11 +431,7 @@ async function appendCSVData(data, config) {
       data.temperature,
       config.configName,
       config.pathlength,
-      config.thresholdForce,
-      config.insertionLength,
-      config.retractionLength,
-      config.numberOfCurves,
-      JSON.stringify(config.curveDistances || {})
+      config.thresholdForce
     ].join(",") + "\n";
 
     csvStream.write(row);
@@ -1452,74 +1448,210 @@ ipcMain.handle("delete-config-file", async (event, configName) => {
   }
 });
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
-ipcMain.handle("send-process-mode", async (event, config) => {
-  return await safeExecute("SEND_PROCESS_CONFIG", async () => {
+// ipcMain.handle("send-process-mode", async (event, config) => {
+//   return await safeExecute("SEND_PROCESS_CONFIG", async () => {
+//     try {
+//       console.log('🔧 Process mode config received:', config);
+
+//       if (!isConnected || !client.isOpen) {
+//         throw new Error('Modbus not connected');
+//       }
+
+//       // Parse configuration values
+//       const pathLength = parseInt(config.pathlength);
+//       const thresholdForce = parseFloat(config.thresholdForce); // mN
+//       const insertionLength = parseFloat(config.insertionLength); // mm
+//       const retractionLength = parseFloat(config.retractionLength); // mm
+
+//       console.log('📊 Parsed config values:', {
+//         pathLength: `${pathLength} mm`,
+//         thresholdForce: `${thresholdForce} mN`,
+//         insertionLength: `${insertionLength} mm`,
+//         retractionLength: `${retractionLength} mm`
+//       });
+
+//       // Validate values
+//       if (isNaN(pathLength) || isNaN(thresholdForce) || isNaN(retractionLength)) {
+//         console.error('❌ Invalid configuration values');
+//         return false;
+//       }
+
+//       const results = [];
+
+//       // 1. Write Path Length
+//       console.log(`📝 Writing Path Length: ${pathLength} mm to address 6000`);
+//       await client.writeRegister(6000, pathLength);
+//       await delay(150);
+//       console.log('✅ Path Length written to address 6000');
+//       results.push({ register: '6000 (D0)', value: pathLength, success: true });
+
+//       // 2. Write Threshold Force
+//       const thresholdForceValue = Math.round(thresholdForce);
+//       console.log(`📝 Writing Threshold Force: ${thresholdForceValue} mN to R150`);
+//       await client.writeRegister(150, thresholdForceValue);
+//       await delay(150);
+//       console.log('✅ Threshold Force written to R150');
+//       results.push({ register: '150 (R150)', value: thresholdForceValue, success: true });
+
+//       // 3. Write Temperature
+//       const insertionValue = Math.round(insertionLength); // 0.1°C
+//       console.log(`📝 Writing Insertion Length: ${insertionValue} to 6050`);
+//       await client.writeRegister(6050, insertionValue);
+//       await delay(150);
+//       console.log('✅ Insertion length written to 6050');
+//       results.push({ register: '6050 (D50)', value: insertionValue, success: true });
+
+//       // 4. Write Retraction Length
+//       const retractionValue = Math.round(retractionLength);
+//       console.log(`📝 Writing Retraction Stroke Length: ${retractionValue} mm to R122`);
+//       await client.writeRegister(122, retractionValue);
+//       await delay(150);
+//       console.log('✅ Retraction Stroke Length written to R122');
+//       results.push({ register: '122 (R122)', value: retractionValue, success: true });
+
+//       console.log('✅ All configuration values written');
+//       console.log('📋 Write results:', results);
+
+//       return true;
+
+//     } catch (error) {
+//       console.error('❌ Error sending process mode:', error.message);
+//       return false;
+//     }
+//   });
+// });
+
+ipcMain.handle("send-2point-config", async (event, config) => {
+  return await safeExecute("SEND_2POINT_CONFIG", async () => {
     try {
-      console.log('🔧 Process mode config received:', config);
+      console.log('🔧 2-Point config received:', config);
 
       if (!isConnected || !client.isOpen) {
         throw new Error('Modbus not connected');
       }
 
       // Parse configuration values
-      const pathLength = parseInt(config.pathlength);
-      const thresholdForce = parseFloat(config.thresholdForce); // mN
-      const insertionLength = parseFloat(config.insertionLength); // mm
-      const retractionLength = parseFloat(config.retractionLength); // mm
-
-      console.log('📊 Parsed config values:', {
-        pathLength: `${pathLength} mm`,
-        thresholdForce: `${thresholdForce} mN`,
-        insertionLength: `${insertionLength} mm`,
-        retractionLength: `${retractionLength} mm`
-      });
+      const probeTravelLimit = parseFloat(config.probeTravelLimit);
+      const forceLimit = parseFloat(config.forceLimit);
+      const testSpeed = parseFloat(config.testSpeed);
 
       // Validate values
-      if (isNaN(pathLength) || isNaN(thresholdForce) || isNaN(retractionLength)) {
-        console.error('❌ Invalid configuration values');
+      if (isNaN(probeTravelLimit) || isNaN(forceLimit) || isNaN(testSpeed)) {
+        console.error('❌ Invalid 2-point configuration values');
         return false;
       }
 
       const results = [];
 
-      // 1. Write Path Length
-      console.log(`📝 Writing Path Length: ${pathLength} mm to address 6000`);
-      await client.writeRegister(6000, pathLength);
+      // 1. Write Probe_travel_limit to R1
+      const probeTravelLimitValue = Math.round(probeTravelLimit);
+      console.log(`📝 Writing Probe Travel Limit: ${probeTravelLimitValue} to R1`);
+      await client.writeRegister(1, probeTravelLimitValue);
       await delay(150);
-      console.log('✅ Path Length written to address 6000');
-      results.push({ register: '6000 (D0)', value: pathLength, success: true });
+      results.push({ register: '1 (R1)', value: probeTravelLimitValue, success: true });
 
-      // 2. Write Threshold Force
-      const thresholdForceValue = Math.round(thresholdForce);
-      console.log(`📝 Writing Threshold Force: ${thresholdForceValue} mN to R150`);
-      await client.writeRegister(150, thresholdForceValue);
+      // 2. Write Force_limit to R2
+      const forceLimitValue = Math.round(forceLimit);
+      console.log(`📝 Writing Force Limit: ${forceLimitValue} to R2`);
+      await client.writeRegister(2, forceLimitValue);
       await delay(150);
-      console.log('✅ Threshold Force written to R150');
-      results.push({ register: '150 (R150)', value: thresholdForceValue, success: true });
+      results.push({ register: '2 (R2)', value: forceLimitValue, success: true });
 
-      // 3. Write Temperature
-      const insertionValue = Math.round(insertionLength); // 0.1°C
-      console.log(`📝 Writing Insertion Length: ${insertionValue} to 6050`);
-      await client.writeRegister(6050, insertionValue);
+      // 3. Write Test_speed to R3
+      const testSpeedValue = Math.round(testSpeed);
+      console.log(`📝 Writing Test Speed: ${testSpeedValue} to R3`);
+      await client.writeRegister(3, testSpeedValue);
       await delay(150);
-      console.log('✅ Insertion length written to 6050');
-      results.push({ register: '6050 (D50)', value: insertionValue, success: true });
+      results.push({ register: '3 (R3)', value: testSpeedValue, success: true });
 
-      // 4. Write Retraction Length
-      const retractionValue = Math.round(retractionLength);
-      console.log(`📝 Writing Retraction Stroke Length: ${retractionValue} mm to R122`);
-      await client.writeRegister(122, retractionValue);
-      await delay(150);
-      console.log('✅ Retraction Stroke Length written to R122');
-      results.push({ register: '122 (R122)', value: retractionValue, success: true });
-
-      console.log('✅ All configuration values written');
+      console.log('✅ 2-Point configuration values written');
       console.log('📋 Write results:', results);
 
       return true;
 
     } catch (error) {
-      console.error('❌ Error sending process mode:', error.message);
+      console.error('❌ Error sending 2-point config:', error.message);
+      return false;
+    }
+  });
+});
+
+ipcMain.handle("send-3point-config", async (event, config) => {
+  return await safeExecute("SEND_3POINT_CONFIG", async () => {
+    try {
+      console.log('🔧 3-Point config received:', config);
+
+      if (!isConnected || !client.isOpen) {
+        throw new Error('Modbus not connected');
+      }
+
+      // Parse configuration values
+      const testLength = parseFloat(config.testLength);
+      const measurementInterval = parseFloat(config.measurementInterval);
+      const probeTravelLimit = parseFloat(config.probeTravelLimit);
+      const forceLimit = parseFloat(config.forceLimit);
+      const testSpeed = parseFloat(config.testSpeed);
+      const supportSpan = parseFloat(config.supportSpan);
+      const horizontalSpeed = parseFloat(config.horizontalSpeed);
+
+      // Validate values
+      if (isNaN(testLength) || isNaN(measurementInterval) || isNaN(probeTravelLimit) ||
+        isNaN(forceLimit) || isNaN(testSpeed) || isNaN(supportSpan) || isNaN(horizontalSpeed)) {
+        console.error('❌ Invalid 3-point configuration values');
+        return false;
+      }
+
+      const results = [];
+
+      // 1. Write Test_length to R4
+      const testLengthValue = Math.round(testLength);
+      await client.writeRegister(4, testLengthValue);
+      await delay(150);
+      results.push({ register: '4 (R4)', value: testLengthValue, success: true });
+
+      // 2. Write Measurement_Interval to R5
+      const measurementIntervalValue = Math.round(measurementInterval);
+      await client.writeRegister(5, measurementIntervalValue);
+      await delay(150);
+      results.push({ register: '5 (R5)', value: measurementIntervalValue, success: true });
+
+      // 3. Write Probe_travel_limit to R6
+      const probeTravelLimitValue = Math.round(probeTravelLimit);
+      await client.writeRegister(6, probeTravelLimitValue);
+      await delay(150);
+      results.push({ register: '6 (R6)', value: probeTravelLimitValue, success: true });
+
+      // 4. Write Force_limit to R7
+      const forceLimitValue = Math.round(forceLimit);
+      await client.writeRegister(7, forceLimitValue);
+      await delay(150);
+      results.push({ register: '7 (R7)', value: forceLimitValue, success: true });
+
+      // 5. Write Test_speed to R8
+      const testSpeedValue = Math.round(testSpeed);
+      await client.writeRegister(8, testSpeedValue);
+      await delay(150);
+      results.push({ register: '8 (R8)', value: testSpeedValue, success: true });
+
+      // 6. Write Support_span to R9
+      const supportSpanValue = Math.round(supportSpan);
+      await client.writeRegister(9, supportSpanValue);
+      await delay(150);
+      results.push({ register: '9 (R9)', value: supportSpanValue, success: true });
+
+      // 7. Write Horizontal_speed to R10
+      const horizontalSpeedValue = Math.round(horizontalSpeed);
+      await client.writeRegister(10, horizontalSpeedValue);
+      await delay(150);
+      results.push({ register: '10 (R10)', value: horizontalSpeedValue, success: true });
+
+      console.log('✅ 3-Point configuration values written');
+      console.log('📋 Write results:', results);
+
+      return true;
+
+    } catch (error) {
+      console.error('❌ Error sending 3-point config:', error.message);
       return false;
     }
   });
