@@ -32,16 +32,28 @@ const MainMenu = () => {
 
   // Define all menu options
   const allMenuOptions = [
+    // {
+    //   id: 'load-config',
+    //   title: 'Load Configuration',
+    //   icon: (
+    //     <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    //       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+    //     </svg>
+    //   ),
+    //   description: 'Load existing configuration files',
+    //   gradient: 'from-blue-500 to-cyan-500',
+    //   allowedRoles: ['admin', 'operator'] // Both can access
+    // },
     {
-      id: 'load-config',
-      title: 'Load Configuration',
+      id: 'test-selection',
+      title: 'Test Selection',
       icon: (
         <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
         </svg>
       ),
-      description: 'Load existing configuration files',
-      gradient: 'from-blue-500 to-cyan-500',
+      description: 'Select between 2-Point and 3-Point tests',
+      gradient: 'from-teal-500 to-emerald-500',
       allowedRoles: ['admin', 'operator'] // Both can access
     },
     {
@@ -70,32 +82,32 @@ const MainMenu = () => {
       gradient: 'from-green-500 to-emerald-500',
       allowedRoles: ['admin', 'operator'] // Both can access
     },
-    {
-      id: 'create-config',
-      title: 'Create Configuration',
-      icon: (
-        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
-      ),
-      description: 'Create new configuration settings',
-      gradient: 'from-orange-500 to-amber-500',
-      allowedRoles: ['admin'] // Only admin can access
-    },
-    {
-      id: 'delete-config',
-      title: 'Delete Configuration',
-      icon: (
-        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-        </svg>
-      ),
-      description: 'Remove existing configuration files',
-      variant: 'danger',
-      gradient: 'from-red-500 to-rose-500',
-      allowedRoles: ['admin'] // Only admin can access
-    },
+    // {
+    //   id: 'create-config',
+    //   title: 'Create Configuration',
+    //   icon: (
+    //     <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    //       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+    //       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+    //     </svg>
+    //   ),
+    //   description: 'Create new configuration settings',
+    //   gradient: 'from-orange-500 to-amber-500',
+    //   allowedRoles: ['admin'] // Only admin can access
+    // },
+    // {
+    //   id: 'delete-config',
+    //   title: 'Delete Configuration',
+    //   icon: (
+    //     <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    //       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+    //     </svg>
+    //   ),
+    //   description: 'Remove existing configuration files',
+    //   variant: 'danger',
+    //   gradient: 'from-red-500 to-rose-500',
+    //   allowedRoles: ['admin'] // Only admin can access
+    // },
     {
       id: 'check-updates',
       title: 'Check for Updates',
@@ -108,18 +120,7 @@ const MainMenu = () => {
       gradient: 'from-indigo-500 to-purple-500',
       allowedRoles: ['admin'] // Only admin can access
     },
-    {
-      id: 'test-selection',
-      title: 'Test Selection',
-      icon: (
-        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-        </svg>
-      ),
-      description: 'Select between 2-Point and 3-Point tests',
-      gradient: 'from-teal-500 to-emerald-500',
-      allowedRoles: ['admin', 'operator'] // Both can access
-    }
+
   ];
 
   // Filter menu options based on user role
@@ -255,14 +256,17 @@ const MainMenu = () => {
     setSelectedOption(option.id);
     console.log(`Selected: ${option.title}`);
 
-    if (option.id === 'create-config') {
-      navigate('/create-config');
-    }
-    else if (option.id === 'load-config') {
-      navigate('/handle-config/load');
-    }
-    else if (option.id === 'delete-config') {
-      navigate('/handle-config/delete');
+    // if (option.id === 'create-config') {
+    //   navigate('/create-config');
+    // }
+    // else if (option.id === 'load-config') {
+    //   navigate('/handle-config/load');
+    // }
+    // else if (option.id === 'delete-config') {
+    //   navigate('/handle-config/delete');
+    // }
+    if (option.id === 'test-selection') {
+      navigate('/test-selection');
     }
     else if (option.id === 'manual-mode') {
       try {
@@ -288,9 +292,6 @@ const MainMenu = () => {
       } catch (error) {
         console.error('Update check error:', error);
       }
-    }
-    else if (option.id === 'test-selection') {
-      navigate('/test-selection');
     }
   };
 
@@ -353,12 +354,12 @@ const MainMenu = () => {
         {/* Connection & Power Status Indicators */}
         <div className="flex items-center gap-3 mr-4">
           {/* Power Status Indicator */}
-          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${powerActive ? 'bg-green-100 border-green-200' : 'bg-red-100 border-red-200'} border`}>
+          {/* <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${powerActive ? 'bg-green-100 border-green-200' : 'bg-red-100 border-red-200'} border`}>
             <Power className={`w-4 h-4 ${powerActive ? 'text-green-700' : 'text-red-700'}`} />
             <span className={`text-sm font-medium ${powerActive ? 'text-green-700' : 'text-red-700'}`}>
               POWERED {powerActive ? 'ON' : 'OFF'}
             </span>
-          </div>
+          </div> */}
 
           {/* USB Status Indicator */}
           <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${connectionStatus === 'connected' ? 'bg-green-100 border-green-200' : 'bg-red-100 border-red-200'} border`}>
